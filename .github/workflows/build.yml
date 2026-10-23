@@ -55,23 +55,36 @@ jobs:
           $conf = @{ bundle = @{ windows = @{ signCommand = "trusted-signing-cli -e $env:AZURE_SIGN_ENDPOINT -a $env:AZURE_SIGN_ACCOUNT -c $env:AZURE_SIGN_PROFILE %1" } } } | ConvertTo-Json -Depth 5
           Set-Content -Path src-tauri/tauri.windows.conf.json -Value $conf -Encoding utf8
           Write-Host "signing configured"
-      - uses: tauri-apps/tauri-action@v0
+      # Code-signing secrets reach the build only when they are set: an empty
+      # APPLE_CERTIFICATE makes the bundler try to import an empty .p12 and fail.
+      - name: signing secrets into the environment (only those that exist)
+        shell: bash
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # updater artifacts (latest.json + .sig) are signed with this key
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-          # macOS code signing + notarization, used when present
           APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
           APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-          # Azure Trusted Signing credentials (service principal), used by trusted-signing-cli
           AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
           AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
           AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+        run: |
+          for k in APPLE_CERTIFICATE APPLE_CERTIFICATE_PASSWORD APPLE_SIGNING_IDENTITY APPLE_ID APPLE_PASSWORD APPLE_TEAM_ID AZURE_CLIENT_ID AZURE_CLIENT_SECRET AZURE_TENANT_ID; do
+            v="${!k}"
+            if [ -n "$v" ]; then
+              { echo "$k<<__GRUPR_EOF__"; echo "$v"; echo "__GRUPR_EOF__"; } >> "$GITHUB_ENV"
+              echo "$k: set"
+            else
+              echo "$k: not set"
+            fi
+          done
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # updater artifacts (latest.json + .sig) are signed with this key
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           args: ${{ matrix.args }}
           tagName: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || '' }}
