@@ -1,21 +1,26 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Grupr",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "identifier": "ai.grupr.desktop",
   "build": {
     "frontendDist": "../ui"
   },
   "app": {
     "windows": [],
-    "withGlobalTauri": false,
+    "withGlobalTauri": true,
     "security": {
       "csp": null
     }
   },
   "bundle": {
     "active": true,
-    "targets": ["nsis", "msi", "app", "dmg"],
+    "targets": [
+      "nsis",
+      "msi",
+      "app",
+      "dmg"
+    ],
     "publisher": "Grupr",
     "category": "DeveloperTool",
     "shortDescription": "Grupr desktop",
@@ -39,7 +44,9 @@
   "plugins": {
     "deep-link": {
       "desktop": {
-        "schemes": ["grupr"]
+        "schemes": [
+          "grupr"
+        ]
       }
     }
   }

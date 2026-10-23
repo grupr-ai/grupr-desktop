@@ -9,8 +9,9 @@ What the shell adds over a browser tab:
 - **Deep links**: `grupr://g/<room-id>`, `grupr://agents`, `grupr://agents/waiting` open the app on that page.
 - **Links that leave Grupr open in your browser**, so the window never turns into a general browser. (`*.grupr.ai` and `github.com` stay inside so sign-ins and the GitHub App install complete.)
 - **Remembers its size and position.**
+- **Badge and notifications (0.2).** The web app reports how many things wait on you (approvals, requests, failing routines). The count shows on the tray tooltip, the window title and the macOS dock badge; the taskbar flashes when it grows; a native notification says so, at most once a minute.
 
-The web page runs exactly as it does in a browser: it is given no Tauri IPC. Notifications and an unread badge come in a later version through a small declared bridge.
+The web page gets exactly two commands (`set_badge`, `notify`) and nothing else of Tauri; see `src-tauri/capabilities/default.json`.
 
 ## Install
 

@@ -7,22 +7,27 @@
 //! - one window that stays put: closing it hides it, the tray brings it back,
 //!   a second launch focuses the first (single instance);
 //! - deep links: `grupr://g/<room>`, `grupr://agents`, `grupr://agents/waiting`
-//!   open the app on that page (the web app can emit them in emails and
-//!   webhooks later);
+//!   open the app on that page;
 //! - links that leave Grupr open in the system browser, so the window never
 //!   turns into a general-purpose browser;
-//! - the window remembers its size and position.
+//! - the window remembers its size and position;
+//! - (0.2) the web app reports how many things wait on the owner through two
+//!   commands, `set_badge` and `notify`: the count shows on the tray tooltip,
+//!   the window title and the dock badge, the taskbar flashes when it grows,
+//!   and a native notification says so.
 //!
-//! The web page gets no Tauri IPC (no `remote` capability): it runs exactly as
-//! it does in a browser. Notifications and badges come in a later version
-//! through a small, declared bridge.
+//! Only app.grupr.ai gets those two commands (capabilities/default.json);
+//! the page has no other IPC.
+
+use std::sync::Mutex;
 
 use tauri::{
     menu::{Menu, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
-    AppHandle, Manager, Url, WebviewUrl, WebviewWindowBuilder,
+    AppHandle, Manager, State, Url, UserAttentionType, WebviewUrl, WebviewWindowBuilder,
 };
 use tauri_plugin_deep_link::DeepLinkExt;
+use tauri_plugin_notification::NotificationExt;
 
 /// The web app this shell wraps. Override with GRUPR_APP_URL for staging.
 fn app_url() -> String {
@@ -85,9 +90,43 @@ fn navigate(app: &AppHandle, link: &str) {
     show_main(app);
 }
 
+/// Things waiting on the owner, as the web app last reported them.
+struct Badge(Mutex<u32>);
+
+/// set_badge(count): called by the web app whenever it learns the count.
+#[tauri::command]
+fn set_badge(app: AppHandle, badge: State<'_, Badge>, count: u32) {
+    let previous = {
+        let mut b = badge.0.lock().unwrap_or_else(|e| e.into_inner());
+        std::mem::replace(&mut *b, count)
+    };
+    let tooltip = if count == 0 { "Grupr".to_string() } else { format!("Grupr · {count} waiting on you") };
+    if let Some(tray) = app.tray_by_id("grupr-tray") {
+        let _ = tray.set_tooltip(Some(tooltip.as_str()));
+    }
+    if let Some(w) = app.get_webview_window("main") {
+        let title = if count == 0 { "Grupr".to_string() } else { format!("Grupr ({count})") };
+        let _ = w.set_title(&title);
+        #[cfg(target_os = "macos")]
+        {
+            let _ = w.set_badge_count(if count == 0 { None } else { Some(count as i64) });
+        }
+        if count > previous {
+            let _ = w.request_user_attention(Some(UserAttentionType::Informational));
+        }
+    }
+}
+
+/// notify(title, body): a native notification from the web app.
+#[tauri::command]
+fn notify(app: AppHandle, title: String, body: String) {
+    let _ = app.notification().builder().title(title).body(body).show();
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .manage(Badge(Mutex::new(0)))
         .plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {
             // A second launch, or a deep link handed to a new process on
             // Windows/Linux, lands here: route it to the running window.
@@ -101,7 +140,9 @@ pub fn run() {
         }))
         .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_window_state::Builder::default().build())
+        .invoke_handler(tauri::generate_handler![set_badge, notify])
         .setup(|app| {
             let start = Url::parse(&app_url())?;
             let window = WebviewWindowBuilder::new(app, "main", WebviewUrl::External(start))

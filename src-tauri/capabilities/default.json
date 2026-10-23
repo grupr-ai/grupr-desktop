@@ -1,12 +1,20 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "The main window. Local content only: the remote web app gets no IPC.",
-  "windows": ["main"],
+  "description": "The main window, and the Grupr web app inside it: it may call set_badge and notify (and what notification:default allows), nothing else.",
+  "windows": [
+    "main"
+  ],
   "permissions": [
     "core:default",
     "opener:default",
     "deep-link:default",
-    "window-state:default"
-  ]
+    "window-state:default",
+    "notification:default"
+  ],
+  "remote": {
+    "urls": [
+      "https://app.grupr.ai/*"
+    ]
+  }
 }

@@ -1,7 +1,7 @@
 {
   "name": "grupr-desktop",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Grupr desktop app (Tauri 2): app.grupr.ai in its own window with a tray, deep links and single instance",
   "scripts": {
     "tauri": "tauri",
