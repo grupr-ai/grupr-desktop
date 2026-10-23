@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Grupr",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "identifier": "ai.grupr.desktop",
   "build": {
     "frontendDist": "../ui"
@@ -39,7 +39,8 @@
     },
     "macOS": {
       "minimumSystemVersion": "11.0"
-    }
+    },
+    "createUpdaterArtifacts": true
   },
   "plugins": {
     "deep-link": {
@@ -48,6 +49,12 @@
           "grupr"
         ]
       }
+    },
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEMyOTE4QzNBRjc4RDAxMjkKUldRcEFZMzNPb3lSd3N4Q2F1cUwvU2NUSC8yYkFVb25iNHRtRGxaQlQveVU4WFc0NjF1bDV3S3EK",
+      "endpoints": [
+        "https://github.com/grupr-ai/grupr-desktop/releases/latest/download/latest.json"
+      ]
     }
   }
 }

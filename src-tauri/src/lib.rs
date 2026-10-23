@@ -16,6 +16,9 @@
 //!   the window title and the dock badge, the taskbar flashes when it grows,
 //!   and a native notification says so.
 //!
+//! - (0.3) the app checks GitHub releases for a newer signed build on launch,
+//!   installs it and restarts; a notification says so.
+//!
 //! Only app.grupr.ai gets those two commands (capabilities/default.json);
 //! the page has no other IPC.
 
@@ -28,6 +31,7 @@ use tauri::{
 };
 use tauri_plugin_deep_link::DeepLinkExt;
 use tauri_plugin_notification::NotificationExt;
+use tauri_plugin_updater::UpdaterExt;
 
 /// The web app this shell wraps. Override with GRUPR_APP_URL for staging.
 fn app_url() -> String {
@@ -141,6 +145,7 @@ pub fn run() {
         .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_notification::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_window_state::Builder::default().build())
         .invoke_handler(tauri::generate_handler![set_badge, notify])
         .setup(|app| {
@@ -210,10 +215,34 @@ pub fn run() {
                 tray = tray.icon(icon.clone());
             }
             tray.build(app)?;
+
+            // Updates: one check per launch, a few seconds in so the window
+            // is up first. A signed newer release installs and the app
+            // restarts into it; any failure is silent (next launch tries again).
+            let for_updates = app.handle().clone();
+            tauri::async_runtime::spawn(async move {
+                tokio::time::sleep(std::time::Duration::from_secs(8)).await;
+                check_for_update(for_updates).await;
+            });
             Ok(())
         })
         .run(tauri::generate_context!())
         .expect("error while running Grupr");
+}
+
+async fn check_for_update(app: AppHandle) {
+    let Ok(updater) = app.updater() else { return };
+    let Ok(Some(update)) = updater.check().await else { return };
+    let version = update.version.clone();
+    if update.download_and_install(|_, _| {}, || {}).await.is_ok() {
+        let _ = app
+            .notification()
+            .builder()
+            .title("Grupr updated")
+            .body(format!("Version {version} is installed. Restarting."))
+            .show();
+        app.restart();
+    }
 }
 
 #[cfg(test)]

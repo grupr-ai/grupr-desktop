@@ -10,7 +10,8 @@
     "opener:default",
     "deep-link:default",
     "window-state:default",
-    "notification:default"
+    "notification:default",
+    "updater:default"
   ],
   "remote": {
     "urls": [

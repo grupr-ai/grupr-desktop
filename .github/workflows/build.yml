@@ -40,14 +40,43 @@ jobs:
       - run: npm ci
       - name: unit tests
         run: cargo test --manifest-path src-tauri/Cargo.toml
+      # Windows: Azure Trusted Signing when its secrets exist (see README);
+      # otherwise the installer is unsigned, as before.
+      - name: windows signing (Azure Trusted Signing)
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        env:
+          AZURE_SIGN_ENDPOINT: ${{ secrets.AZURE_SIGN_ENDPOINT }}
+          AZURE_SIGN_ACCOUNT: ${{ secrets.AZURE_SIGN_ACCOUNT }}
+          AZURE_SIGN_PROFILE: ${{ secrets.AZURE_SIGN_PROFILE }}
+        run: |
+          if (-not $env:AZURE_SIGN_ENDPOINT) { Write-Host "no signing secrets: unsigned build"; exit 0 }
+          cargo install trusted-signing-cli --locked
+          $conf = @{ bundle = @{ windows = @{ signCommand = "trusted-signing-cli -e $env:AZURE_SIGN_ENDPOINT -a $env:AZURE_SIGN_ACCOUNT -c $env:AZURE_SIGN_PROFILE %1" } } } | ConvertTo-Json -Depth 5
+          Set-Content -Path src-tauri/tauri.windows.conf.json -Value $conf -Encoding utf8
+          Write-Host "signing configured"
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # updater artifacts (latest.json + .sig) are signed with this key
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          # macOS code signing + notarization, used when present
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          # Azure Trusted Signing credentials (service principal), used by trusted-signing-cli
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
         with:
           args: ${{ matrix.args }}
           tagName: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || '' }}
           releaseName: ${{ startsWith(github.ref, 'refs/tags/') && format('Grupr Desktop {0}', github.ref_name) || '' }}
-          releaseBody: 'Installers for Windows (.exe, .msi) and macOS (.dmg). Unsigned for now: Windows SmartScreen and macOS Gatekeeper will ask you to confirm.'
+          releaseBody: 'Installers for Windows (.exe, .msi) and macOS (.dmg). Installed copies update themselves from this release.'
           releaseDraft: true
           prerelease: false
       - uses: actions/upload-artifact@v4

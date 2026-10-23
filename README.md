@@ -35,8 +35,13 @@ npm run build    # installers under src-tauri/target/release/bundle
 
 Bump `version` in `src-tauri/tauri.conf.json`, `src-tauri/Cargo.toml` and `package.json`, commit, tag `vX.Y.Z`, push the tag. The workflow drafts a GitHub release with both installers; publish it from the Releases page.
 
-## Signing and auto-update (not yet set up)
+## Auto-update
 
-- **Windows**: an Authenticode certificate (an EV or OV cert, or Azure Trusted Signing). Set `bundle.windows.certificateThumbprint` or the `signCommand`, and add the secrets to the workflow.
-- **macOS**: an Apple Developer ID Application certificate plus notarization (`APPLE_CERTIFICATE`, `APPLE_CERTIFICATE_PASSWORD`, `APPLE_SIGNING_IDENTITY`, `APPLE_ID`, `APPLE_PASSWORD`, `APPLE_TEAM_ID` as workflow secrets; tauri-action picks them up).
-- **Auto-update**: `npm run tauri signer generate -- -w ~/.tauri/grupr.key` once, keep the private key and its password out of the repository, add `TAURI_SIGNING_PRIVATE_KEY` and `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` as workflow secrets, put the public key in `tauri.conf.json` under `plugins.updater.pubkey`, and add `tauri-plugin-updater`. The release workflow then publishes `latest.json` next to the installers.
+Since 0.3.0 the app checks this repository's latest release on launch (`latest.json`), installs a newer signed build and restarts. Builds are signed with the updater key held as the repository secrets `TAURI_SIGNING_PRIVATE_KEY` / `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` (the private key file lives in the maintainer's `~/.tauri/`, never in the repo). The public key is in `src-tauri/tauri.conf.json`. The update endpoint is only reachable while the repository is public.
+
+## Code signing
+
+Both are wired in the workflow and switch on when their secrets exist.
+
+- **Windows** (Azure Trusted Signing): secrets `AZURE_SIGN_ENDPOINT` (e.g. `https://eus.codesigning.azure.net`), `AZURE_SIGN_ACCOUNT`, `AZURE_SIGN_PROFILE`, and a service principal with the *Trusted Signing Certificate Profile Signer* role: `AZURE_CLIENT_ID`, `AZURE_CLIENT_SECRET`, `AZURE_TENANT_ID`. The workflow installs `trusted-signing-cli` and signs the NSIS and MSI installers.
+- **macOS** (Developer ID + notarization): `APPLE_CERTIFICATE` (the .p12, base64), `APPLE_CERTIFICATE_PASSWORD`, `APPLE_SIGNING_IDENTITY` (`Developer ID Application: Grupr Inc (TEAMID)`), `APPLE_ID`, `APPLE_PASSWORD` (an app-specific password), `APPLE_TEAM_ID`. tauri-action signs and notarizes the .app and .dmg when these are present.
