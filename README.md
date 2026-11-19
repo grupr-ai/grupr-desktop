@@ -17,7 +17,7 @@ The web page gets exactly two commands (`set_badge`, `notify`) and nothing else 
 
 Download the latest installer from the [releases](https://github.com/grupr-ai/grupr-desktop/releases) (Windows `.exe`/`.msi`, macOS `.dmg`). Every push to `main` also leaves installers as workflow artifacts under Actions.
 
-Until the builds are signed, Windows SmartScreen says "Windows protected your PC" (More info → Run anyway) and macOS says the app is from an unidentified developer (right-click → Open once).
+**The installers are unsigned.** They are not code-signed for Windows or macOS yet, so Windows SmartScreen says "Windows protected your PC" (More info → Run anyway) and macOS says the app is from an unidentified developer (right-click → Open once). The automatic updates described below are checked against the app's own update key; that is not operating-system code signing.
 
 ## Build locally
 
