@@ -17,7 +17,19 @@ The web page gets exactly two commands (`set_badge`, `notify`) and nothing else 
 
 Download the latest installer from the [releases](https://github.com/grupr-ai/grupr-desktop/releases) (Windows `.exe`/`.msi`, macOS `.dmg`). Every push to `main` also leaves installers as workflow artifacts under Actions.
 
-**The installers are unsigned.** They are not code-signed for Windows or macOS yet, so Windows SmartScreen says "Windows protected your PC" (More info → Run anyway) and macOS says the app is from an unidentified developer (right-click → Open once). The automatic updates described below are checked against the app's own update key; that is not operating-system code signing.
+**The installers are unsigned.** They are not code-signed for Windows or macOS yet, so both systems warn before the first launch:
+
+- **Windows**: SmartScreen says "Windows protected your PC". Choose More info → Run anyway.
+- **macOS 15 and later**: open the app once and dismiss the warning, then go to System Settings → Privacy & Security, scroll to Security and choose Open Anyway. On older macOS, right-click the app → Open does the same.
+- **"Grupr is damaged and can't be opened"** (seen on Apple Silicon Macs with unsigned apps): macOS marks every downloaded file with a quarantine flag, and for an unsigned app that flag can produce this message instead of the usual warning. Removing the flag lets the app open; do it only for a copy you downloaded from this repository's releases:
+
+  ```sh
+  xattr -dr com.apple.quarantine /Applications/Grupr.app
+  ```
+
+  `xattr -d` deletes the `com.apple.quarantine` attribute and `-r` applies it to everything inside the app. It changes nothing else, and macOS then skips its first-launch check for that copy.
+
+The automatic updates described below are checked against the app's own update key; that is not operating-system code signing.
 
 ## Build locally
 
